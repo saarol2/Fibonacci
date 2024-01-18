@@ -1,0 +1,244 @@
+# TKJ-harjoitustyö 2023 Fibonacci
+# Oliver Saari, opiskelijanumero: Y68734393, sähköposti: osaari22@student.oulu.fi
+#
+# Pohdinta:
+# Laskujeni ja arviointini mukaan tämän ohjelman suoritukseen menee noin 70 000-100 000 per numero.
+# Tämä riippuu täysin siitä, minkä numeron se tarkistaa, sillä se tarkistaa ensin onko 5*x*x+4 perfect square
+# ja jos ei ole, se tarkistaa toisen vaihtoehdon (5*x*x-4)
+# Käytin harjoitustyön toteutukseen harjoitustehtävässä laatimaani neliöjuuren laskenta ohjelmaa.
+# Neliöjuuri lasketaan siis tässä sen harjoitustehtävän algoritmin mukaisesti.
+# Bittisiirrot oikealle sain toimimaan suhteellisen nopeasti käyttämällä suurempaa jakajaa ja lopussa
+# kertomalla siitä saatu tulos. Tämä prosessi tehdään kahdesti, jotta se olisi nopeampi.
+# Lisäksi hyötyä oli merkkijono tehtävästä, sillä sitä muuntelemalla sain luettua muistipaikasta aina uuden luvun.
+# Jos tästä ohjelmasta haluaisi tehdä vielä nopeamman, sen voisi tehdä esimerkiksi optimoimalla kertolaskuja Peasant binary-algoritmia käyttäen.
+# En itse saanut harjoitustehtävässä tehokasta kertolaskua toimimaan, joten toteutin kertolaskut tässä perinteisellä hitaammalla tavalla.
+# Tästä alkaa palautettava koodi
+main:
+    irmovq $1, %rbx #vakio 1
+    irmovq $16777216, %rbp #bit Tässä tehtävässä suurin käsiteltävä luku on 1000. Siis suurin luku mistä pitää voida laskea neliöjuuri on 1000*1000*5+4 = 5000004. Siispä (bit = 1 << 16) tilalta pitää käyttää (bit = 1 << 24 = 16777216)
+    irmovq $0, %r8 #result
+newnum: #Tämä ottaa jonosta seuraavan numeron kunnes sieltä tulee nolla
+    mrmovq (%r11), %r12
+    andq %r12, %r12 #tarkistetaan, onko jonossa lukuja
+    je end #Jos kaikki luvut ovat fibonaccin lukuja
+    irmovq $5, %rsi #kertoja
+    irmovq $0, %r14 #kertolaskun tulos
+    irmovq $0, %r8
+    rrmovq %r12, %r13 #kopioidaan x kertolaskua varten
+    jmp savenum #hyväksytään numero ja siirrytään sen käsittelyyn
+
+notnewnum: #Jos 5*x*x+4 ei ole perfect square kokeillaan onko 5*x*x-4
+    mrmovq -8(%r11), %r12 #Tänne on tallennettu 5*x*x+4 arvo.
+    irmovq $8, %rbx
+    subq %rbx, %r12 #Miinustetaan kahdeksan, jotta saadaan haluttu uusi x:n arvo
+    irmovq $1, %rbx #vakio 1
+    mrmovq -16(%r11), %rbp #Aikaisemmin tallennettu bit, ettei tarvitse tehdä kaikkia bittisiirtoja uudestaan
+    irmovq $4, %r8 #result
+    jmp newbit #siirrytään laskemaan neliöjuuri
+
+newbit: #Siirretään bit kaksi kertaa vasemmalle, eli kerrotaan neljällä
+    subq %rbx, %r8
+    jl newsetup
+    addq %rbp, %rax
+    jmp newbit
+
+newsetup:
+    rrmovq %rax, %rbp #Siirretään uusi bit oikeaan rekisteriin ja nollataan %rax ja %r8 rekisterit
+    irmovq $0, %rax
+    irmovq $0, %r8
+    jmp whileone #Siirrytään laskemaan neliöjuuri
+
+
+savenum: #muutetaan x muotoon 5*x*x+4, kerrotaan tässä silmukassa ensin x x:llä
+    subq %rbx, %r13
+    jl nextmultiply
+    addq %r12, %r14
+    jmp savenum
+nextmultiply: #kerrotaan vielä 5:llä
+    subq %rbx, %rsi
+    jl plusminus
+    addq %r14, %r8
+    jmp nextmultiply
+
+plusminus: #katsotaan, että onko toinen vaihtoehto käyty jo läpi
+    andq %rcx, %rcx
+    je plusfour #jos 5*x*x+4 ei ole vielä tarkistettu, tarkistetaan se. Muuten tarkistetaan toinen vaihtoehto
+    rrmovq %r8, %r12 #siirretään tulos oikeaan rekisteriin
+    irmovq $4, %rax
+    subq %rax, %r12 #kokeillaan ensin että onko 5x*x+4 perfect square
+    irmovq $0, %rsi #nollataan %rsi ja %r8 rekisterit
+    irmovq $0, %r8
+    rmmovq %r12,-8(%r11) #Tallennetaan 5*x*x+4 arvo -8(%r11) paikkaan
+    jmp whileone #siirrytään laskemaan neliöjuuri
+
+plusfour:
+    rrmovq %r8, %r12 #siirretään tulos oikeaan rekisteriin
+    irmovq $4, %rax
+    addq %rax, %r12 #kokeillaan ensin että onko 5x*x+4 perfect square
+    irmovq $0, %rsi #nollataan %rsi ja %r8 rekisterit
+    irmovq $0, %r8
+    rmmovq %r12,-8(%r11)
+    jmp whileone
+
+whileone:
+    rrmovq %rbp, %r9 #kopioidaan bit %r9 rekisteriin
+    irmovq $0, %rsp
+    subq %r12, %r9 #while (bit > num), eli bit - num > 0
+    jg tarkistus #
+    rmmovq %rbp, -16(%r11) #Tallennetaan bit muistiin, siltä varalta että pitää tarkistaa toinenkin vaihtoehdoista (5*x*x-4)
+    jmp whiletwo #Tänne siirrytään kun bit < num
+tarkistus: #Tarkistetaan pitääkö bittioperaatio tehdä kerran vai kahdesti
+    andq %rsp, %rsp
+    je bittwosetup
+    jg bitonesetup
+bittwosetup: #Asetetaan tarvittavat rekisterien arvot bittisiirtoa varten(>> 2)
+    rrmovq %rbp, %rdx #siirrettävä bitti
+    irmovq $10000, %r14 #jakaja
+    irmovq $2500, %r10 #kertoja
+    irmovq $0, %r9, #jakolaskun tulos
+    irmovq $0, %r13 #kertolaskun tulos
+    irmovq $40, %rax #desimaali laskun jakaja
+    irmovq $4, %rsi #viimeinen jakaja
+    jmp bitoperation
+bitoperation:
+#Bittioperaatio on toteutettu siten, että jaetaan luku
+#ensin suurella luvulla, jonka jälkeen kerrotaan sitä tarpeen mukaan
+    subq %r14, %rdx
+    jl save
+    addq %rbx, %r9
+    jmp bitoperation
+save: #säästetään jakojäännös
+    addq %r14, %rdx
+kerto: #kerrotaan saatu jakolaskun tulos setupissa valitulla kertoimella
+    subq %rbx, %r9
+    jl reuse
+    addq %r10, %r13
+    jmp kerto
+reuse:
+    irmovq $0, %r9
+    jmp decimal
+decimal: #Kerrotaan ensimmäisessä jakolaskussa jäänyt jakojäännös
+    subq %rax, %rdx
+    jl checkpoint
+    addq %rbx, %r9
+    jmp decimal
+checkpoint:
+    addq %rax, %rdx
+    irmovq $10, %r14 #käytetään %r14 rekisteri uudelleen
+    jmp multiply
+multiply: #Toistetaan äskeiset operaatiot, nopeuttaksemme bittisiirtoa
+    subq %rbx, %r14
+    jl anotherd
+    addq %r9, %r13
+    jmp multiply
+anotherd:
+    subq %rsi, %rdx
+    jl loppu
+    addq %rbx, %r13
+    jmp anotherd
+loppu: #Bittisiirto on suoritettu, seuraavaksi määritetään mitä tapahtuu seuraavaksi
+    rrmovq %r13, %rdx
+    rrmovq %r13, %rsi
+    andq %rdi, %rdi
+    jg elsesave #Else lauseen säästäminen
+    jl finalsave #Toinen while silmukka on suoritettu loppuun
+    andq %rsp, %rsp
+    je whileonesave #Ensimmäinen while silmukka on suoritettu loppuun
+    jg ifsave #If lauseen säästäminen
+whileonesave:
+    rrmovq %rsi, %rbp
+    jmp whileone
+ifsave:
+    rrmovq %rsi, %r14
+    jmp resupdate
+finalsave:
+    rrmovq %rsi, %rbp
+    irmovq $0, %rdi
+    jmp whiletwo
+whiletwo:
+    andq %rbp, %rbp #bit != 0
+    je continue #neliöjuuri on laskettu
+    jmp iflause
+iflause: #if (num >= res + bit)
+    rrmovq %r12, %r10
+    subq %r8, %r10
+    subq %rdx, %r10
+    jl else #Jos if (num >= res + bit) on False, mennään else lauseeseen.
+    irmovq $0, %r10
+    subq %r8, %r12
+    subq %rdx, %r12 #Päivitetään num arvoa algoritmin mukaisesti
+    irmovq $10, %rsp
+    jmp restarkistus #Tarkistetaan onko result 0, muuten on turha suorittaa bittisiirtoa
+    
+restarkistus:
+    andq %r8, %r8
+    jg tarkistus #Jos res !=0, seuraavaksi toteutetaan (res >> 1) 
+    rrmovq %r8, %r14
+    jmp resupdate #Jos res==0, res = (res >> 1) + bit => res = 0 + bit
+    
+bitonesetup: #Asetetaan tarvittavat rekisterien arvot bittisiirtoa varten(>> 1)
+    rrmovq %r8, %rdx #siirrettävä bitti
+    irmovq $10000, %r14 #jakaja
+    irmovq $5000, %r10 #kertoja
+    irmovq $0, %r9, #jakolaskun tulos
+    irmovq $0, %r13 #kertolaskun tulos
+    irmovq $20, %rax #desimaali laskun jakaja
+    irmovq $2, %rsi #viimeinen jakaja
+    jmp bitoperation
+resupdate: #res = (res >> 1) + bit;
+    rrmovq %r14, %r8
+    addq %rbp, %r8
+    irmovq $-1, %rdi
+    jmp bittwosetup #Seuraavaksi bit >>= 2
+else: #Valmistaudutaan bittisiirtoon
+    irmovq $0, %r10
+    irmovq $10, %rsp
+    irmovq $1, %rdi
+    jmp tarkistus #Seuraavaksi res >>= 1
+elsesave: #Tallennetaan tulos
+    irmovq $-1, %rdi
+    rrmovq %rdx, %r8
+    jmp bittwosetup
+continue: #neliöjuuri on nyt laskettu, seuraavaksi katsotaan onko se perfect square
+    mrmovq -8(%r11), %r14 #tallennetaan arvo mistä neliöjuuri laskettiin rekisteriin %r14
+    rrmovq %r8, %rax
+    rrmovq %r8, %r10
+    andq %rcx, %rcx
+    jg minuseight #Jos nyt tarkistetaan arvoa 5*x*x-4, siirrytään tänne
+    jmp pqkertolasku #seuraavana tarkistetaan onko s*s==x
+minuseight: #Miinustetaan 8 siitä mistä me laskimme neliöjuuren
+    irmovq $8, %rbx
+    subq %rbx, %r14
+    irmovq $1, %rbx
+    jmp pqkertolasku
+pqkertolasku: #Lasketaan s*s
+    subq %rbx, %rax
+    je pqcheck
+    addq %r8, %r10
+    jmp pqkertolasku
+pqcheck: #tarkistetaan onko s*s==x
+    subq %r14, %r10
+    je isfibonacci #Jos s*s==x on True, luku on fibonaccin luku
+    jmp checkother #Jos s*s==x on False, tarkistetaan toinen vaihtoehto jos sitä ei ole tarkistettu
+checkother:
+    andq %rcx, %rcx
+    jg notfibonacci #Jos molemmat vaihtoehdot on tarkistettu ja kumpikaan ei ole perfect square, luku ei ole fibonaccin luku
+    irmovq $1, %rcx
+    jmp notnewnum #Jos on vasta tarkistettu toinen vaihtoehto (5*x*x+4) ja se ei käynyt, tarkistetaan toinen
+   
+isfibonacci: #luku on fibonaccin luku. Jos lukujonossa on vielä lukuja, tarkistetaan ne
+    irmovq $0, %rcx
+    irmovq $8, %rdx
+    addq %rdx, %r11 #Lisätään %r11 rekisteriin 8, jotta saadaan luettua seuraavasta muistipaikasta luku
+    jmp main
+
+notfibonacci: #jos luku ei ole fibonacci
+    mrmovq (%r11), %rax #Palautetaan kyseinen luku %rax rekisterissä
+    halt
+
+end: #jos koko lukujono hyväksytään
+    irmovq $0, %rax #%rax palauttaa 0
+    halt
+    
+.pos 0x700
+array:
