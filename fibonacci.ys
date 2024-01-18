@@ -1,18 +1,4 @@
-# TKJ-harjoitustyö 2023 Fibonacci
-# Oliver Saari, opiskelijanumero: Y68734393, sähköposti: osaari22@student.oulu.fi
-#
-# Pohdinta:
-# Laskujeni ja arviointini mukaan tämän ohjelman suoritukseen menee noin 70 000-100 000 per numero.
-# Tämä riippuu täysin siitä, minkä numeron se tarkistaa, sillä se tarkistaa ensin onko 5*x*x+4 perfect square
-# ja jos ei ole, se tarkistaa toisen vaihtoehdon (5*x*x-4)
-# Käytin harjoitustyön toteutukseen harjoitustehtävässä laatimaani neliöjuuren laskenta ohjelmaa.
-# Neliöjuuri lasketaan siis tässä sen harjoitustehtävän algoritmin mukaisesti.
-# Bittisiirrot oikealle sain toimimaan suhteellisen nopeasti käyttämällä suurempaa jakajaa ja lopussa
-# kertomalla siitä saatu tulos. Tämä prosessi tehdään kahdesti, jotta se olisi nopeampi.
-# Lisäksi hyötyä oli merkkijono tehtävästä, sillä sitä muuntelemalla sain luettua muistipaikasta aina uuden luvun.
-# Jos tästä ohjelmasta haluaisi tehdä vielä nopeamman, sen voisi tehdä esimerkiksi optimoimalla kertolaskuja Peasant binary-algoritmia käyttäen.
-# En itse saanut harjoitustehtävässä tehokasta kertolaskua toimimaan, joten toteutin kertolaskut tässä perinteisellä hitaammalla tavalla.
-# Tästä alkaa palautettava koodi
+# TKJ-harjoitustyö 2023 Fibonacci, Oliver Saari
 main:
     irmovq $1, %rbx #vakio 1
     irmovq $16777216, %rbp #bit Tässä tehtävässä suurin käsiteltävä luku on 1000. Siis suurin luku mistä pitää voida laskea neliöjuuri on 1000*1000*5+4 = 5000004. Siispä (bit = 1 << 16) tilalta pitää käyttää (bit = 1 << 24 = 16777216)
